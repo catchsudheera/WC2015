@@ -2,6 +2,7 @@ import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.gargoylesoftware.htmlunit.FailingHttpStatusCodeException;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.html.*;
+import com.sun.corba.se.impl.encoding.OSFCodeSetRegistry;
 
 import java.io.*;
 import java.io.IOException;
@@ -9,6 +10,8 @@ import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * Created by sudheera on 2/15/15.
@@ -18,12 +21,90 @@ public class Crawler {
     HashMap<String,Integer> grounds;
     HashMap<String,Integer> teams;
 
+    TreeMap<String,Integer> poolA;
+    TreeMap<String,Integer> poolB;
+
     public static void main(String[] args) throws InterruptedException, IOException {
 
         Crawler crawler = new Crawler();
+
         crawler.setupData();
-        MatchResults results = crawler.getResults("Bangladesh", "Sri Lanka", "Berri Oval", "any");
+        crawler.getFixtures();
+        crawler.viewResults();
+
+
+        //MatchResults results = crawler.getResults("Bangladesh", "Sri Lanka", "Berri Oval", "any");
         System.out.println("done...");
+
+
+    }
+
+    private void viewResults(){
+
+        System.out.println("Pool A results");
+        for (String s: poolA.keySet()){
+            System.out.println(s+"  "+poolA.get(s));
+        }
+
+        System.out.println("Pool B results");
+        for (String s: poolB.keySet()){
+            System.out.println(s+"  "+poolB.get(s));
+        }
+
+
+    }
+
+    private void getFixtures(){
+        java.util.logging.Logger.getLogger("com.gargoylesoftware").setLevel(java.util.logging.Level.OFF);
+
+        String fixturesUrl="http://www.espncricinfo.com/icc-cricket-world-cup-2015/content/series/509587.html?template=fixtures";
+        HtmlPage page = getPage(fixturesUrl);
+
+        HtmlUnorderedList unorderedList = page.getFirstByXPath("//*[@id=\"page\"]/div[3]/div/div[3]/div/div[1]/div[3]/ul");
+        DomNodeList<HtmlElement> li = unorderedList.getElementsByTagName("li");
+        for (HtmlElement l:li){
+            if((((HtmlDivision) l.getFirstByXPath("div[2]")).getTextContent()).contains("Quarter-Final")){
+                break;
+            }
+
+
+            String[] fixtureDetails = ((HtmlDivision) l.getFirstByXPath("div[2]")).getTextContent().replace("\t", "").replace("LIVE", "").trim().replace("D/N","").trim().split("\n");
+
+
+            String match = fixtureDetails[0].trim();
+            String ground = fixtureDetails[fixtureDetails.length-1].trim();
+
+
+            String[] matchNo = match.split(",");
+            System.out.println("getting fixtures : "+matchNo[0]);
+
+            String[] twoTeams = matchNo[1].trim().split("-");
+            String poolName=twoTeams[0].trim();
+
+            String[] team = twoTeams[1].trim().split(" v ");
+
+
+            String teamA = team[0].trim();
+            String teamB = team[1].trim();
+
+            String teamWon="no";
+
+            MatchResults results = getResults(teamA, teamB, ground, "any");
+
+            if(results.getTeamAWins()>results.getTeamBWins()){
+                teamWon=teamA;
+            } else if(results.getTeamAWins()<results.getTeamBWins()){
+                teamWon=teamB;
+            }
+
+            if(!teamWon.equals("no")) {
+                if (poolName.equals("Pool A")) {
+                    poolA.put(teamWon, (poolA.get(teamWon)+1));
+                } else {
+                    poolB.put(teamWon, (poolB.get(teamWon)+1));
+                }
+            }
+        }
 
 
     }
@@ -107,6 +188,27 @@ public class Crawler {
             }
             serializeObj(teams,teamFileLocation);
         }
+
+
+        poolA=new TreeMap<String, Integer>();
+        poolB=new TreeMap<String, Integer>();
+
+        poolA.put("England",0);
+        poolA.put("Australia",0);
+        poolA.put("Sri Lanka",0);
+        poolA.put("Bangladesh",0);
+        poolA.put("New Zealand",0);
+        poolA.put("Afghanistan",0);
+        poolA.put("Scotland",0);
+
+
+        poolB.put("South Africa",0);
+        poolB.put("India",0);
+        poolB.put("Pakistan",0);
+        poolB.put("West Indies",0);
+        poolB.put("Zimbabwe",0);
+        poolB.put("Ireland",0);
+        poolB.put("United Arab Emirates",0);
 
     }
 

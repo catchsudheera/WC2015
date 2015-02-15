@@ -20,4 +20,5 @@ public class MatchResults {
     public int getTeamBWins() {
         return teamBWins;
     }
+
 }
